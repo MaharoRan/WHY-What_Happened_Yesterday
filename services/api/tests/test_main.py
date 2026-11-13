@@ -23,7 +23,7 @@ def test_health_ok(client):
 
 def test_health_fails_when_database_is_down(client, monkeypatch):
     # Port 1 sur localhost : connexion refusée immédiatement.
-    unreachable = create_engine("postgresql+psycopg2://u:p@127.0.0.1:1/db")
+    unreachable = create_engine("postgresql+psycopg://u:p@127.0.0.1:1/db")
     monkeypatch.setattr(main, "engine", unreachable)
     assert client.get("/health").status_code == 500
 
