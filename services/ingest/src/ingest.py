@@ -1,12 +1,15 @@
-"""Extrait les articles de la veille depuis les flux RSS -> Parquet brut (couche bronze).
+"""Extrait les articles de la veille depuis les flux RSS -> Parquet brut (bronze).
 
-Un fichier par source et par jour : bronze/source=<id>/date=<YYYY-MM-DD>/articles.parquet
-Colonnes : source, title, excerpt, link, date, journalist (null si absent du flux, pas de scraping).
+Un fichier par source et par jour :
+bronze/source=<id>/date=<YYYY-MM-DD>/articles.parquet
+Colonnes : source, title, excerpt, link, date, journalist
+(journalist est null si absent du flux, pas de scraping).
 """
+
 import os
 import re
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from time import mktime
 
 import feedparser
@@ -20,10 +23,16 @@ UA = "Mozilla/5.0 (compatible; WHY-bot/0.1)"
 
 
 def clean_journalist(raw, source_name):
-    """Normalise l'auteur issu du flux (author / dc:creator). Null si absent ou si c'est le nom du média."""
+    """Normalise l'auteur du flux (author / dc:creator).
+
+    Null si absent ou si c'est le nom du média.
+    """
     if not raw:
         return None
-    norm = lambda s: re.sub(r"[\W_]+", "", s).lower()
+
+    def norm(s):
+        return re.sub(r"[\W_]+", "", s).lower()
+
     names = []
     for n in re.split(r"[,;]", raw):
         n = re.sub(r"\s+", " ", n.strip(" \t\"'«».")).strip()
@@ -40,17 +49,19 @@ def fetch(feed, day):
         ts = e.get("published_parsed") or e.get("updated_parsed")
         if not ts:
             continue
-        dt = datetime.fromtimestamp(mktime(ts), tz=timezone.utc)
+        dt = datetime.fromtimestamp(mktime(ts), tz=UTC)
         if dt.date() != day:
             continue
-        rows.append({
-            "source": feed["name"],
-            "title": e.get("title"),
-            "excerpt": e.get("summary"),
-            "link": e.get("link"),
-            "date": dt.isoformat(),
-            "journalist": clean_journalist(e.get("author"), feed["name"]),
-        })
+        rows.append(
+            {
+                "source": feed["name"],
+                "title": e.get("title"),
+                "excerpt": e.get("summary"),
+                "link": e.get("link"),
+                "date": dt.isoformat(),
+                "journalist": clean_journalist(e.get("author"), feed["name"]),
+            }
+        )
     return rows
 
 

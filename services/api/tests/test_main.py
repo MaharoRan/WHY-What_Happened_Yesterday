@@ -10,7 +10,6 @@ from sqlalchemy import create_engine  # noqa: E402
 import main  # noqa: E402
 
 
-
 @pytest.fixture
 def client():
     return TestClient(main.app, raise_server_exceptions=False)
